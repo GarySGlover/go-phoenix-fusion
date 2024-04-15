@@ -1,14 +1,21 @@
-
-{ pkgs ? import <unstable> {} }:
+{pkgs}:
 with pkgs;
-mkShell {
-  buildInputs = [
-    tinygo go gopls delve
-  ];
+  mkShell {
+    buildInputs = [
+      delve
+      go
+      golangci-lint
+      gopls
+      jq
+      tinygo
+    ];
 
-  shellHook = ''
-     export GOROOT=$(tinygo info pico|grep GOROOT|awk '{print $3}')
-     export GOFLAGS=-tags=$(tinygo info pico|grep "build tags"|awk -F" {1,}" '{for(i=3;i<NF;i++) printf $i","; print $NF}')
-     export GOPATH=/home/$(whoami)/go:${tinygo}/share/tinygo 
-  '';
-}
+    shellHook = ''
+      tinygotarget=$(tinygo info -json -target=pico)
+      export GOROOT=$(jq -r '.goroot' <<< "$tinygotarget")
+      export GOOS=$(jq -r '.goos' <<< "$tinygotarget")
+      export GOARCH=$(jq -r '.goarch' <<< "$tinygotarget")
+      export GOFLAGS=-tags=$(jq -r '.build_tags | join(",")' <<< "$tinygotarget")
+      export GOPATH=$(git rev-parse --show-toplevel)/go:"${tinygo}/share/tinygo"
+    '';
+  }
